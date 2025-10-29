@@ -17,7 +17,8 @@ import {
 import { CoinFlip } from '@/components/game/CoinFlip';
 import { MoolaLogo } from '@/components/ui/MoolaLogo';
 import { GAME_CONFIG } from '@/lib/game/config';
-import { formatCurrency, formatTimeRemaining, processFlip } from '@/lib/game/engine';
+import { formatCurrency, formatTimeRemaining, processFlip, calculateBettingStats } from '@/lib/game/engine';
+import { createGame, updateGame, saveGameFlip } from '@/lib/api/game';
 import { GameState, GameFlip } from '@/types/game';
 
 export default function GamePage() {
@@ -37,6 +38,35 @@ export default function GamePage() {
     largestBet: 0,
     finalResult: null,
   });
+
+  // Initialize game on component mount
+  useEffect(() => {
+    const initializeGame = async () => {
+      const playerId = localStorage.getItem('coinFlipPlayerId');
+      
+      if (!playerId) {
+        // Redirect to signup if no player ID
+        window.location.href = '/signup';
+        return;
+      }
+
+      // Create game session in database
+      const { gameId, error } = await createGame(playerId);
+      
+      if (error) {
+        console.error('Failed to create game:', error);
+        // Continue with local game if database fails
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        id: gameId || `local-${Date.now()}`,
+        playerId: playerId,
+      }));
+    };
+
+    initializeGame();
+  }, []);
 
   const [currentBet, setCurrentBet] = useState<number>(2.50);
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails'>('heads');
@@ -134,21 +164,32 @@ export default function GamePage() {
     });
 
     // Simulate coin flip animation delay
-    setTimeout(() => {
+    setTimeout(async () => {
       // Set the result and stop flipping animation
       setLastResult({ result: flipResult.result, won: flipResult.won });
       setIsFlipping(false);
       
       setGameFlips(prev => [...prev, newFlip]);
       
-      setGameState(prev => ({
-        ...prev,
+      const newGameState = {
+        ...gameState,
         balance: flipResult.newBalance,
-        totalFlips: prev.totalFlips + 1,
-        winCount: prev.winCount + (flipResult.won ? 1 : 0),
-        lossCount: prev.lossCount + (flipResult.won ? 0 : 1),
-        largestBet: Math.max(prev.largestBet, currentBet),
-      }));
+        totalFlips: gameState.totalFlips + 1,
+        winCount: gameState.winCount + (flipResult.won ? 1 : 0),
+        lossCount: gameState.lossCount + (flipResult.won ? 0 : 1),
+        largestBet: Math.max(gameState.largestBet, currentBet),
+      };
+      
+      setGameState(newGameState);
+      
+      // Save flip to database (don't block UI if it fails)
+      try {
+        await saveGameFlip(newFlip);
+        await updateGame(gameState.id, newGameState);
+      } catch (dbError) {
+        console.error('Database save failed:', dbError);
+        // Continue with local state even if database fails
+      }
     }, 1000);
   }, [gameState, currentBet, selectedSide, isFlipping]);
 
@@ -192,11 +233,64 @@ export default function GamePage() {
       const finalResult = gameState.balance >= gameState.targetBalance ? 'won' : 
                          gameState.timeRemaining <= 0 ? 'timeout' : 'lost';
       
+      // Save final game state and send Klaviyo events
+      const handleGameCompletion = async () => {
+        try {
+          // Update final game state in database
+          const finalGameState = {
+            ...gameState,
+            isCompleted: true,
+            finalResult: finalResult,
+            gameEndedAt: new Date(),
+          };
+          
+          await updateGame(gameState.id, finalGameState);
+          
+          // Send Klaviyo event
+          const playerEmail = localStorage.getItem('coinFlipPlayerEmail');
+          if (playerEmail) {
+            const stats = calculateBettingStats(gameFlips);
+            const gameDuration = (GAME_CONFIG.gameDurationMs - gameState.timeRemaining) / 1000;
+            
+            let eventName: 'CoinFlip Finished' | 'CoinFlip CapReached' | 'CoinFlip Busted';
+            if (finalResult === 'won') {
+              eventName = 'CoinFlip CapReached';
+            } else if (finalResult === 'lost') {
+              eventName = 'CoinFlip Busted';
+            } else {
+              eventName = 'CoinFlip Finished';
+            }
+            
+            await fetch('/api/klaviyo/game-event', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: playerEmail,
+                eventName,
+                properties: {
+                  final_balance: gameState.balance,
+                  total_flips: gameState.totalFlips,
+                  win_rate: gameState.totalFlips > 0 ? (gameState.winCount / gameState.totalFlips) * 100 : 0,
+                  consistency_score: stats.consistencyScore,
+                  largest_bet: gameState.largestBet,
+                  game_duration_seconds: gameDuration,
+                  final_result: finalResult,
+                },
+              }),
+            });
+          }
+        } catch (error) {
+          console.error('Game completion handling failed:', error);
+        }
+      };
+      
+      handleGameCompletion();
+      
       setTimeout(() => {
         window.location.href = `/results?balance=${gameState.balance}&flips=${gameState.totalFlips}&result=${finalResult}`;
       }, 2000);
     }
-  }, [gameState.isCompleted, gameState.balance, gameState.totalFlips, gameState.targetBalance, gameState.timeRemaining]);
+  }, [gameState.isCompleted, gameState.balance, gameState.totalFlips, gameState.targetBalance, gameState.timeRemaining, gameState, gameFlips]);
 
   const progressPercentage = (gameState.balance / gameState.targetBalance) * 100;
   const timeProgressPercentage = ((GAME_CONFIG.gameDurationMs - gameState.timeRemaining) / GAME_CONFIG.gameDurationMs) * 100;

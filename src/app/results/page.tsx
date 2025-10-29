@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { MoolaLogo } from '@/components/ui/MoolaLogo';
+import { VideoEmbed, RESULT_VIDEOS, VideoType } from '@/components/ui/VideoEmbed';
 import { 
   Trophy, 
   TrendingUp, 
@@ -91,6 +92,20 @@ export default function ResultsPage() {
   const resultInfo = getResultIcon();
   const resultMessage = getResultMessage();
   const progressPercentage = (results.finalBalance / 150) * 100;
+
+  // Determine which video to show based on outcome
+  const getVideoType = (): VideoType => {
+    if (results.finalBalance <= 0) {
+      return 'BANKRUPT'; // Went to $0.00
+    } else if (results.finalBalance >= 150) {
+      return 'WON'; // Reached $150+ cap
+    } else {
+      return 'TIMEOUT'; // Didn't reach $150
+    }
+  };
+
+  const videoType = getVideoType();
+  const vimeoId = RESULT_VIDEOS[videoType];
 
   return (
     <div className="min-h-screen gradient-mesh">
@@ -191,6 +206,43 @@ export default function ResultsPage() {
                 {results.finalBalance >= 150 ? '✅' : '❌'}
               </div>
               <div className="text-xs text-white/70">Goal Reached</div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Educational Video */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="mb-8"
+        >
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {videoType === 'BANKRUPT' && '💸 What Happened & How to Avoid It'}
+                  {videoType === 'TIMEOUT' && '⏰ Getting Closer to the Goal'}
+                  {videoType === 'WON' && '🎉 Congratulations! You Mastered It'}
+                </h3>
+                <p className="text-white/80 text-sm">
+                  {videoType === 'BANKRUPT' && 'Learn why going bust happens and how to prevent it'}
+                  {videoType === 'TIMEOUT' && 'Discover strategies to reach the goal faster'}
+                  {videoType === 'WON' && 'See why your strategy worked so well'}
+                </p>
+              </div>
+              
+              <VideoEmbed 
+                vimeoId={vimeoId}
+                title={`Moola Educational Video - ${videoType}`}
+                className="w-full"
+              />
+              
+              {!vimeoId && (
+                <div className="text-center text-white/60 text-sm mt-2">
+                  Educational video coming soon
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MoolaLogo } from '@/components/ui/MoolaLogo';
+import { createPlayer } from '@/lib/api/player';
 import { ArrowLeft, Mail, Phone, User } from 'lucide-react';
 import Link from 'next/link';
 
@@ -53,17 +54,27 @@ export default function SignupPage() {
     setIsLoading(true);
     
     try {
-      // TODO: Submit to Supabase and Klaviyo
-      console.log('Form data:', formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create player in Supabase and sync to Klaviyo
+      const { player, error } = await createPlayer({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        smsOptIn: formData.smsOptIn,
+      });
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      // Store player ID in localStorage for the game
+      localStorage.setItem('coinFlipPlayerId', player.id);
+      localStorage.setItem('coinFlipPlayerEmail', player.email);
       
       // Redirect to instructions
       window.location.href = '/instructions';
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ submit: 'Something went wrong. Please try again.' });
+      setErrors({ submit: error instanceof Error ? error.message : 'Something went wrong. Please try again.' });
     } finally {
       setIsLoading(false);
     }
