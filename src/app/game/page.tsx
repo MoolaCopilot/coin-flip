@@ -76,6 +76,8 @@ export default function GamePage() {
   const [lastResult, setLastResult] = useState<{ result: 'heads' | 'tails'; won: boolean } | null>(null);
   const [gameFlips, setGameFlips] = useState<GameFlip[]>([]);
   const [showWinAnimation, setShowWinAnimation] = useState(false);
+  const [hasReachedGoal, setHasReachedGoal] = useState(false);
+  const [showContinuePrompt, setShowContinuePrompt] = useState(false);
 
   // Timer countdown
   useEffect(() => {
@@ -103,13 +105,22 @@ export default function GamePage() {
     return () => clearInterval(timer);
   }, [gameState.isActive, gameState.isCompleted]);
 
-  // Show win animation when reaching target but don't end game
+  // Show win animation and continue prompt when reaching target
   useEffect(() => {
-    if (gameState.balance >= gameState.targetBalance && gameState.isActive && !showWinAnimation) {
+    if (gameState.balance >= gameState.targetBalance && gameState.isActive && !hasReachedGoal) {
+      setHasReachedGoal(true);
       setShowWinAnimation(true);
-      setTimeout(() => setShowWinAnimation(false), 3000);
+      setTimeout(() => {
+        setShowWinAnimation(false);
+        setShowContinuePrompt(true);
+      }, 3000);
     }
-  }, [gameState.balance, gameState.targetBalance, gameState.isActive, showWinAnimation]);
+    
+    // Hide continue prompt if balance drops below target
+    if (gameState.balance < gameState.targetBalance && hasReachedGoal) {
+      setShowContinuePrompt(false);
+    }
+  }, [gameState.balance, gameState.targetBalance, gameState.isActive, hasReachedGoal]);
 
   // Check for bust condition
   useEffect(() => {
@@ -195,7 +206,9 @@ export default function GamePage() {
 
   const handleQuickChip = (percentage: number) => {
     const amount = (gameState.balance * percentage) / 100;
-    setCurrentBet(Math.min(amount, gameState.balance));
+    // Round to 2 decimal places for proper currency format
+    const roundedAmount = Math.round(amount * 100) / 100;
+    setCurrentBet(Math.min(roundedAmount, gameState.balance));
     // Track that this was a percentage bet
     setLastBetType({ wasPercentage: true, percentage: percentage });
   };
@@ -211,7 +224,9 @@ export default function GamePage() {
       if (lastBet.wasPercentage && lastBet.percentage) {
         // If last bet was a percentage, calculate new amount based on current balance
         const amount = (gameState.balance * lastBet.percentage) / 100;
-        setCurrentBet(Math.min(amount, gameState.balance));
+        // Round to 2 decimal places for proper currency format
+        const roundedAmount = Math.round(amount * 100) / 100;
+        setCurrentBet(Math.min(roundedAmount, gameState.balance));
       } else {
         // If last bet was a fixed amount, use that amount
         setCurrentBet(Math.min(lastBet.amount, gameState.balance));
@@ -292,7 +307,7 @@ export default function GamePage() {
     }
   }, [gameState.isCompleted, gameState.balance, gameState.totalFlips, gameState.targetBalance, gameState.timeRemaining, gameState, gameFlips]);
 
-  const progressPercentage = (gameState.balance / gameState.targetBalance) * 100;
+  const progressPercentage = Math.min(100, (gameState.balance / gameState.targetBalance) * 100);
   const timeProgressPercentage = ((GAME_CONFIG.gameDurationMs - gameState.timeRemaining) / GAME_CONFIG.gameDurationMs) * 100;
 
   if (gameState.isCompleted) {
@@ -568,6 +583,54 @@ export default function GamePage() {
               <div className="text-8xl mb-4">🎉</div>
               <h2 className="text-4xl font-bold text-white mb-2">YOU WON!</h2>
               <p className="text-2xl text-white/90">{formatCurrency(gameState.balance)}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Continue Playing Prompt */}
+      <AnimatePresence>
+        {showContinuePrompt && gameState.isActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="glass-card p-8 max-w-sm w-full text-center"
+            >
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-2xl font-bold text-white mb-3">Goal Reached!</h3>
+              <p className="text-white/80 mb-2">
+                You hit ${formatCurrency(gameState.targetBalance)}!
+              </p>
+              <p className="text-white/70 text-sm mb-6">
+                Time left: {formatTimeRemaining(gameState.timeRemaining)}
+              </p>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={() => setShowContinuePrompt(false)}
+                  className="w-full btn-gradient font-semibold py-3 h-auto"
+                  size="lg"
+                >
+                  Keep Playing! 🚀
+                </Button>
+                <Button
+                  onClick={() => {
+                    setGameState(prev => ({ ...prev, isActive: false, isCompleted: true }));
+                  }}
+                  variant="outline"
+                  className="w-full btn-glass font-semibold py-3 h-auto"
+                  size="lg"
+                >
+                  See Results
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

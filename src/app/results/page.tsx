@@ -91,7 +91,7 @@ export default function ResultsPage() {
 
   const resultInfo = getResultIcon();
   const resultMessage = getResultMessage();
-  const progressPercentage = (results.finalBalance / 150) * 100;
+  const progressPercentage = Math.min(100, (results.finalBalance / 150) * 100);
 
   // Determine which video to show based on outcome
   const getVideoType = (): VideoType => {
