@@ -99,8 +99,9 @@ export default function GamePage() {
       return;
     }
 
-    setIsFlipping(true);
+    // Clear previous result immediately and start flipping
     setLastResult(null);
+    setIsFlipping(true);
 
     // Process the flip
     const flipResult = processFlip(currentBet, selectedSide, gameState.balance);
