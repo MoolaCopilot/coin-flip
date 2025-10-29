@@ -1,0 +1,176 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  /* Font configuration */
+  --font-sans: 'Satoshi', system-ui, sans-serif;
+  
+  /* Color palette - Dark theme */
+  --color-background: 222 84% 4.9%;
+  --color-foreground: 210 40% 98%;
+  --color-card: 222 84% 4.9% / 80%;
+  --color-card-foreground: 210 40% 98%;
+  --color-popover: 222 84% 4.9%;
+  --color-popover-foreground: 210 40% 98%;
+  --color-primary: 217 91% 60%;
+  --color-primary-foreground: 222 84% 4.9%;
+  --color-secondary: 217 32% 17.5%;
+  --color-secondary-foreground: 210 40% 98%;
+  --color-muted: 217 32% 17.5%;
+  --color-muted-foreground: 215 20.2% 65.1%;
+  --color-accent: 217 32% 17.5%;
+  --color-accent-foreground: 210 40% 98%;
+  --color-destructive: 0 62.8% 30.6%;
+  --color-border: 217 32% 17.5%;
+  --color-input: 217 32% 17.5%;
+  --color-ring: 217 91% 60%;
+  
+  /* Radius */
+  --radius: 1rem;
+}
+
+/* Base styles */
+* {
+  border-color: hsl(var(--color-border));
+}
+
+body {
+  background-color: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
+  font-family: var(--font-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom animations */
+@keyframes flip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg) scale(1.1); }
+  100% { transform: rotateY(180deg); }
+}
+
+@keyframes mesh-move {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%, 50% 50%, 0% 0%;
+  }
+  33% {
+    background-position: 30% 10%, 70% 90%, 20% 80%, 10% 10%;
+  }
+  66% {
+    background-position: 70% 20%, 30% 80%, 80% 20%, 20% 20%;
+  }
+}
+
+.coin-flip {
+  animation: flip 1s ease-in-out;
+  transform-style: preserve-3d;
+}
+
+.gradient-mesh {
+  background: radial-gradient(circle at 25% 25%, hsl(217, 91%, 60%) 0%, transparent 50%),
+              radial-gradient(circle at 75% 75%, hsl(316, 73%, 69%) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, hsl(266, 85%, 58%) 0%, transparent 50%),
+              linear-gradient(135deg, hsl(222, 84%, 4.9%) 0%, hsl(217, 32%, 17.5%) 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  animation: mesh-move 20s ease-in-out infinite;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, 
+    hsl(217, 91%, 60%) 0%, 
+    hsl(316, 73%, 69%) 50%, 
+    hsl(266, 85%, 58%) 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, 
+    hsl(217, 91%, 60%) 0%, 
+    hsl(316, 73%, 69%) 50%, 
+    hsl(266, 85%, 58%) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-card {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.btn-glass {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  transform: scale(1);
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, 
+    hsl(217, 91%, 60%) 0%, 
+    hsl(316, 73%, 69%) 50%, 
+    hsl(266, 85%, 58%) 100%);
+  transition: all 0.3s ease;
+  transform: scale(1);
+}
+
+.btn-gradient:hover {
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25);
+  transform: scale(1.05);
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive sizing for desktop */
+@media (min-width: 768px) {
+  .touch-target {
+    min-height: 40px;
+    min-width: 40px;
+  }
+  
+  /* Smaller text on desktop for better proportions */
+  .game-container {
+    font-size: 0.9rem;
+  }
+  
+  /* More reasonable button sizing on desktop */
+  .desktop-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Safe area handling for mobile */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
